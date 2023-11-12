@@ -176,8 +176,9 @@ public class SimulateMatch {
         final StopWatch sw = new StopWatch();
         sw.start();
 
-        final Game g1 = mc.createGame();
+        Game g1 = mc.createGame();
         // will run match in the same thread
+        /*
         try {
             TimeLimitedCodeBlock.runWithTimeout(() -> {
                 mc.startGame(g1);
@@ -194,6 +195,13 @@ public class SimulateMatch {
             if (!g1.isGameOver()) {
                 g1.setGameOver(GameEndReason.Draw);
             }
+        }
+         */
+        mc.startGame(g1);
+
+        g1 = mc.finalGame;
+        if (!g1.isGameOver()) {
+            g1.setGameOver(GameEndReason.Draw);
         }
 
         List<GameLogEntry> log;

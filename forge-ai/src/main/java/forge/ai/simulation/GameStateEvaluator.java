@@ -84,7 +84,7 @@ public class GameStateEvaluator {
         if (game.isGameOver()) {
             return getScoreForGameOver(game, aiPlayer);
         }
-
+        /*
         CombatSimResult result = simulateUpcomingCombatThisTurn(game, aiPlayer);
         if (result != null) {
             Player aiPlayerCopy = (Player) result.copier.find(aiPlayer);
@@ -93,6 +93,7 @@ public class GameStateEvaluator {
             }
             return getScoreForGameStateImpl(result.gameCopy, aiPlayerCopy);
         }
+         */
         return getScoreForGameStateImpl(game, aiPlayer);
     }
 

@@ -2056,6 +2056,7 @@ public class Player extends GameEntity implements Comparable<Player> {
     public final boolean checkLoseCondition() {
         // Just in case player already lost
         if (getOutcome() != null) {
+            System.out.println("NO SHOTTTT");
             return getOutcome().lossState != null;
         }
 
@@ -2063,6 +2064,7 @@ public class Player extends GameEntity implements Comparable<Player> {
         // Rule 704.5b - If a player attempted to draw a card from a library with no cards in it
         //               since the last time state-based actions were checked, he or she loses the game.
         if (triedToDrawFromEmptyLibrary) {
+            System.out.println("MILLED LOL");
             triedToDrawFromEmptyLibrary = false; // one-shot check
             // Mine, Mine, Mine! prevents decking
             if (!hasKeyword("You don't lose the game for drawing from an empty library.")) {
@@ -2073,6 +2075,7 @@ public class Player extends GameEntity implements Comparable<Player> {
         // Rule 704.5a -  If a player has 0 or less life, he or she loses the game.
         final boolean hasNoLife = getLife() <= 0;
         if (hasNoLife && !cantLoseForZeroOrLessLife()) {
+            System.out.println("NO LIFE LOL");
             return loseConditionMet(GameLossReason.LifeReachedZero, null);
         }
 
@@ -2653,7 +2656,7 @@ public class Player extends GameEntity implements Comparable<Player> {
 
     public final void setFirstController(PlayerController ctrlr) {
         if (controller != null) {
-            throw new IllegalStateException("Controller creator already assigned");
+            //throw new IllegalStateException("Controller creator already assigned");
         }
         controller = ctrlr;
         updateAvatar();

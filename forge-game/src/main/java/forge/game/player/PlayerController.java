@@ -1,9 +1,6 @@
 package forge.game.player;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import forge.game.*;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -74,6 +71,8 @@ public abstract class PlayerController {
 
     protected final GameView gameView;
 
+    protected final GameAction gameAction;
+
     protected final Player player;
     protected final LobbyPlayer lobbyPlayer;
 
@@ -81,13 +80,16 @@ public abstract class PlayerController {
         gameView = game0.getView();
         player = p;
         lobbyPlayer = lp;
+        gameAction = new GameAction(game0);
     }
 
     public boolean isAI() {
         return false;
     }
 
+
     public Game getGame() { return gameView.getGame(); }
+    public GameAction getGameAction() { return gameAction; }
     public Match getMatch() { return gameView.getMatch(); }
     public Player getPlayer() { return player; }
     public LobbyPlayer getLobbyPlayer() { return lobbyPlayer; }
@@ -128,6 +130,13 @@ public abstract class PlayerController {
     public abstract List<SpellAbility> chooseSpellAbilitiesForEffect(List<SpellAbility> spells, SpellAbility sa, String title, int num, Map<String, Object> params);
 
     public abstract SpellAbility chooseSingleSpellForEffect(List<SpellAbility> spells, SpellAbility sa, String title, Map<String, Object> params);
+
+    public void setCaches(ArrayList<ArrayList<Pair<Integer, Integer>>> a) {
+
+    }
+    public ArrayList<ArrayList<Pair<Integer, Integer>>> getCaches() {
+        return null;
+    }
 
     public abstract <T extends GameEntity> List<T> chooseEntitiesForEffect(FCollectionView<T> optionList, int min, int max, DelayedReveal delayedReveal, SpellAbility sa, String title, Player relatedPlayer, Map<String, Object> params);
 

@@ -1,4 +1,4 @@
-package forge.ai;
+package forge.player;
 
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
@@ -7,6 +7,7 @@ import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import forge.LobbyPlayer;
+import forge.ai.*;
 import forge.ai.ability.ProtectAi;
 import forge.ai.simulation.GameStateEvaluator;
 import forge.card.CardStateName;
@@ -24,12 +25,11 @@ import forge.game.ability.effects.CharmEffect;
 import forge.game.card.*;
 import forge.game.card.CardPredicates.Presets;
 import forge.game.combat.Combat;
-import forge.game.combat.CombatUtil;
-import forge.game.event.GameEventGameRestarted;
 import forge.game.cost.Cost;
 import forge.game.cost.CostEnlist;
 import forge.game.cost.CostPart;
 import forge.game.cost.CostPartMana;
+import forge.game.event.GameEventGameRestarted;
 import forge.game.keyword.Keyword;
 import forge.game.keyword.KeywordInterface;
 import forge.game.mana.Mana;
@@ -42,7 +42,9 @@ import forge.game.spellability.*;
 import forge.game.staticability.StaticAbility;
 import forge.game.trigger.WrappedAbility;
 import forge.game.zone.ZoneType;
+import forge.item.IPaperCard;
 import forge.item.PaperCard;
+import forge.model.FModel;
 import forge.util.Aggregates;
 import forge.util.ITriggerEvent;
 import forge.util.MyRandom;
@@ -61,21 +63,23 @@ import java.util.*;
  *
  * Handles phase skips for now.
  */
-public class PlayerControllerAi extends PlayerController {
+public class SimulationControllerGUI extends PlayerController {
     private final AiController brains;
 
     private boolean pilotsNonAggroDeck = false;
-    private static int simsLeft = 3;
-    private int parentPlayer;
+    private int simsLeft = 100;
+    private long randomSeed;
     private GameStateEvaluator eval = new GameStateEvaluator();
     private int declareAttackersCounter = 0;
 
-    private ArrayList<ArrayList<Pair<Integer, Integer>>> declareAttackersCache = new ArrayList<>();
+    private ArrayList<ArrayList<Pair<Card, GameEntity>>> declareAttackersCache = new ArrayList<>();
     GameObjectMap gom;
 
-    public PlayerControllerAi(Game game, Player p, LobbyPlayer lp) {
+    public SimulationControllerGUI(Game game, Player p, LobbyPlayer lp) {
         super(game, p, lp);
-
+        Random origRandom = MyRandom.getRandom();
+        randomSeed = origRandom.nextLong();
+        MyRandom.setRandom(new Random(randomSeed));
         brains = new AiController(p, game);
     }
 
@@ -94,12 +98,7 @@ public class PlayerControllerAi extends PlayerController {
     public void setUseSimulation(boolean value) {
         brains.setUseSimulation(value);
     }
-    public void setCaches(ArrayList<ArrayList<Pair<Integer, Integer>>> a) {
-        declareAttackersCache = a;
-    }
-    public ArrayList<ArrayList<Pair<Integer, Integer>>> getCaches() {
-        return declareAttackersCache;
-    }
+
     @Override
     public SpellAbility getAbilityToPlay(Card hostCard, List<SpellAbility> abilities, ITriggerEvent triggerEvent) {
         if (abilities.isEmpty()) {
@@ -660,230 +659,120 @@ public class PlayerControllerAi extends PlayerController {
 
         return CardCollection.getView(toReturn);
     }
-    private void tryAttacker(List<Pair<Integer, Integer>> a, List<List<Pair<Integer, Integer>>> all, Combat c, int index) {
-
-        if(index >= getPlayer().getCreaturesInPlay().size()) {
+    private void tryAttacker(CardCollection a, List<CardCollection> all, Combat c, int index) {
+        if(index >= c.getAttackers().size()) {
             all.add(a);
             return;
         }
-        //Card atkr = getPlayer().getCreaturesInPlay().get(index);
-        for(int i = 0; i < c.getDefenders().size(); i++) {
-            Pair<Integer, Integer> p = new ImmutablePair<>(index, i);
-
-            if(!CombatUtil.canAttack(getPlayer().getCreaturesInPlay().get(index), c.getDefenders().get(i))) {
-                //illegal attack
-                continue;
-            }
-            List<Pair<Integer, Integer>> b = new ArrayList<>(a);
-            b.add(p);
-            tryAttacker(b, all, c, index+1);
-        }
+        CardCollection b = (CardCollection) a.clone();
+        a.add(c.getAttackers().get(index));
         tryAttacker(a, all, c, index+1);
-
+        tryAttacker(b, all, c, index+1);
+    }
+    private GameState createGameStateObject() {
+        return new GameState() {
+            @Override
+            public IPaperCard getPaperCard(final String cardName, final String setCode, final int artID) {
+                return FModel.getMagicDb().getCommonCards().getCard(cardName, setCode, artID);
+            }
+        };
     }
     @Override
     public void declareAttackers(Player attacker, Combat combat) {
-        System.out.println("TURN: " + attacker.getTurn());
+        //brains.declareAttackers(attacker, combat);
 
-        if(getGame().getPhaseHandler().endSim) {
-            //use bad AI for pointless decisions after game has been marked for termination
-            System.out.println("hello vyvanse");
-            brains.declareAttackers(attacker, combat);
-            return;
-        }
+        SimulationControllerGUI p1 = (SimulationControllerGUI)(getGame().getPlayers().get(0).getController());
+        SimulationControllerGUI p2 = (SimulationControllerGUI)(getGame().getPlayers().get(1).getController());
 
-        PlayerControllerAi p1 = (PlayerControllerAi)(getGame().getPlayers().get(0).getController());
-        PlayerControllerAi p2 = (PlayerControllerAi)(getGame().getPlayers().get(1).getController());
-
-        List<List<Pair<Integer, Integer>>> possibleAttackCombinations = new ArrayList<>(9999);
-        List<Pair<Integer, Integer>> empty = new ArrayList<>();
-
-        //fill list of lists
-        FCollectionView<GameEntity> allDefenders = combat.getDefenders();
-        tryAttacker(empty, possibleAttackCombinations, combat, 0);
-
-        //DEBUG: print all possible attackers
-        System.out.print("PLAYER 1 CREATURES: ");
-        for(Card c : p1.getPlayer().getCreaturesInPlay()) {
-            System.out.print(c.getName() + ", ");
-        }
-        System.out.println();
-
-        System.out.print("PLAYER 2 CREATURES: ");
-        for(Card c : p2.getPlayer().getCreaturesInPlay()) {
-            System.out.print(c.getName() + ", ");
-        }
-        System.out.println();
-
-        //DEBUG: print all hands
-        System.out.print("PLAYER 1 HAND: ");
-        for(Card c : p1.getPlayer().getCardsIn(ZoneType.Hand)) {
-            System.out.print(c.getName() + ", ");
-        }
-        System.out.println();
-
-        System.out.print("PLAYER 2 HAND: ");
-        for(Card c : p2.getPlayer().getCardsIn(ZoneType.Hand)) {
-            System.out.print(c.getName() + ", ");
-        }
-        System.out.println();
-
-        //DEBUG: print possible attack formations
-        for (List<Pair<Integer, Integer>> atkComb : possibleAttackCombinations) {
-            for(Pair<Integer, Integer> atkr : atkComb) {
-                Card c = getPlayer().getCreaturesInPlay().get(atkr.getLeft());
-                GameEntity e = combat.getDefenders().get(atkr.getRight());
-                System.out.print(c.getName() + " -> " + e.getName() + ", ");
-            }
-            System.out.println();
-        }
-        if(declareAttackersCounter < declareAttackersCache.size()) {
+        if(declareAttackersCounter <= declareAttackersCache.size()) {
             //decision has already been computed
-            List<Pair<Integer, Integer>> d = declareAttackersCache.get(declareAttackersCounter);
-
-            System.out.print("DECISION IN CACHE: ");
-            for (Pair<Integer, Integer> atkr : d) {
-                //combat.removeFromCombat(atkr.getLeft());
-                Card c = getPlayer().getCreaturesInPlay().get(atkr.getLeft());
-                GameEntity e = combat.getDefenders().get(atkr.getRight());
-                combat.addAttacker(c, e);
-                System.out.print(c.getName() + " -> " + e.getName() + ", ");
+            for (Pair<Card, GameEntity> atkr : declareAttackersCache.get(declareAttackersCounter)) {
+                combat.addAttacker(atkr.getLeft(), atkr.getRight());
             }
-            System.out.println();
-            System.out.println();
             declareAttackersCounter++;
-            //if(combat.isPlayerAttacked(p1.getPlayer()) || combat.isPlayerAttacked(p2.getPlayer())) {
-            //    System.out.println("ATTACKS WENT THROUGH");
-            //}
-
             return;
-        }
-        if(possibleAttackCombinations.size() >= 32) {
-            if(simsLeft < 3) {
-                System.out.println("TOO MANY POSSIBLE ATTACKS FOR SIMULATION - ENDING SIM EARLY...");
-                simsLeft = 0;
-            } else {
-                //use basic AI for big attacks
-                System.out.println("TOO MANY POSSIBLE ATTACKS FOR SIMULATION - USING SIMPLE AI");
-                brains.declareAttackers(attacker, combat);
-                ArrayList<Pair<Integer, Integer>> atkrs = new ArrayList<>();
-                for (Card c : combat.getAttackers()) {
-                    int left = getPlayer().getCreaturesInPlay().indexOf(c);
-                    int right = combat.getDefenders().indexOf(combat.getDefenderByAttacker(c));
-                    atkrs.add(new ImmutablePair<>(left, right));
-                }
-
-                declareAttackersCache.add(atkrs);
-                declareAttackersCounter++;
-                return;
-            }
         }
         if(simsLeft < 1) {
             //is a leaf sim
             //just return current score
-            getGame().gameScore = eval.getScoreForGameState(getGame(), getGame().getPlayers().get(parentPlayer)).value;
-            System.out.println("RAN OUT OF SIMS - RETURNING STATE SCORE: " + getGame().gameScore);
+            getGame().gameScore = eval.getScoreForGameState(getGame(), getPlayer()).value;
             getGame().getPhaseHandler().endSim = true;
             return;
         }
-        Random localRandom = null;
+        List<CardCollection> possibleAttackCombinations = new ArrayList<>(9999);
+        CardCollection empty = new CardCollection();
+        //fill list of lists
+        tryAttacker(empty, possibleAttackCombinations, combat, 0);
+        FCollectionView<GameEntity> allDefenders = combat.getDefenders();
+
         int localSimCount = simsLeft;
-        try {
-            localRandom = MyRandom.cloneRandom(MyRandom.getRandom());
-        } catch(Exception e) {
-            //do nothing
-            System.out.println("I want to die");
-        }
-        int maxScore = -9999;
-        int minScore = 9999;
+        int orginalCounter = declareAttackersCounter;
+        int maxScore = 0;
+        ArrayList<Pair<Card, GameEntity>> maxAction = new ArrayList<>();
+        declareAttackersCache.add(new ArrayList<Pair<Card, GameEntity>>());
+        for (GameEntity e : allDefenders) {
+            for (CardCollection atkrs : possibleAttackCombinations) {
+//                GameState gState = createGameStateObject();
+//                gState.initFromGame(getGame());
+//                getGame().getPhaseHandler().simsLeft = localSimCount;
+//                getGame().getPhaseHandler().startFirstTurn(getGame().getPlayers().get(0));
+                declareAttackersCounter = orginalCounter;
+                declareAttackersCache.get(declareAttackersCounter).clear();
+                for (Card atkr : atkrs) {
+                    //combat.addAttacker(atkr, e);
+                    Pair<Card, GameEntity> p = new ImmutablePair<>(atkr, e);
+                    declareAttackersCache.get(declareAttackersCounter).add(p);
 
-        ArrayList<Pair<Integer, Integer>> maxAction = new ArrayList<>();
-        declareAttackersCache.add(new ArrayList<Pair<Integer, Integer>>());
-
-        for (List<Pair<Integer, Integer>> atkrs : possibleAttackCombinations) {
-
-            //declareAttackersCounter = orginalCounter;
-            declareAttackersCache.get(declareAttackersCounter).clear();
-            for (Pair<Integer, Integer> atkr: atkrs) {
-                //combat.addAttacker(atkr, e);
-                declareAttackersCache.get(declareAttackersCounter).add(atkr);
-
-            }
-            //restart game as a sim
-            System.out.println("RESTARTING GAME");
-            simsLeft = localSimCount/ possibleAttackCombinations.size();
-
-
-            Game simGame = getMatch().createGame();
-
-            PlayerControllerAi newP1 = (PlayerControllerAi) simGame.getPlayers().get(0).getController();
-            PlayerControllerAi newP2 = (PlayerControllerAi) simGame.getPlayers().get(1).getController();
-            newP1.declareAttackersCache = new ArrayList<>(p1.declareAttackersCache);
-            newP1.declareAttackersCounter = 0;
-            newP2.declareAttackersCache = new ArrayList<>(p2.declareAttackersCache);
-            newP2.declareAttackersCounter = 0;
-            if(localSimCount == 3) {
-                //is not within sim
-                if (this == p1) {
-                    newP1.parentPlayer = 0;
-                    newP2.parentPlayer = 0;
-                } else {
-                    newP1.parentPlayer = 1;
-                    newP2.parentPlayer = 1;
                 }
-            } else {
-                newP1.parentPlayer = parentPlayer;
-                newP2.parentPlayer = parentPlayer;
-            }
-            getMatch().startGame(simGame, null);
+                //restart game as a sim
+                getGame().getPhaseHandler().simsLeft = localSimCount/ possibleAttackCombinations.size();
+
+                getGame().getPhaseHandler().setPhase(null);
+                getGame().updatePhaseForView();
+                getGame().fireEvent(new GameEventGameRestarted(getGame().getPhaseHandler().getPlayerTurn()));
+                //declareAttackersCounter = 0;
+                p1.declareAttackersCounter = 0;
+                p2.declareAttackersCounter = 0;
+                MyRandom.setRandom(new Random(randomSeed));
 
 
-            System.out.println("SIM GAME FINISHED");
-            //collect score from sim
-            int collectedScore = simGame.gameScore;
+                getGameAction().startGame(getGame().getOutcome(), null);
 
-            if(collectedScore > maxScore) {
-                maxScore = collectedScore;
-                maxAction = new ArrayList<>(declareAttackersCache.get(declareAttackersCounter));
-            }
-            if(collectedScore < minScore) {
-                minScore = collectedScore;
+                getGame().getPhaseHandler().simsLeft = localSimCount;
+
+                //collect score from sim
+                getGame().getPhaseHandler().endSim = false;
+                int collectedScore = getGame().gameScore;
+
+                if(collectedScore > maxScore) {
+                    maxScore = collectedScore;
+                    maxAction = new ArrayList<>(declareAttackersCache.get(orginalCounter));
+                }
             }
         }
-        simsLeft = localSimCount;
-
-
-        if(simsLeft < 3) {
+        declareAttackersCounter = orginalCounter;
+        if(simsLeft < 100) {
             //is a sim dont finalize
+            //declareAttackersCounter--;
+            declareAttackersCache.remove(declareAttackersCache.size()-1);
             //return score data
-            if((this == p1) == (parentPlayer == 0)) {
-                getGame().gameScore = maxScore;
-            } else {
-                getGame().gameScore = minScore;
-            }
-            System.out.println("SIM ENDING... RETURNING SCORE: " + getGame().gameScore);
+            getGame().gameScore = maxScore;
             getGame().getPhaseHandler().endSim = true;
 
         } else {
             //finalize decision
-            System.out.print("RETURNING TO BASE GAME WITH BEST ACTION: ");
-            declareAttackersCache.set(declareAttackersCounter, maxAction);
-            for (Pair<Integer, Integer> p : maxAction) {
-                //combat.addAttacker(p.getLeft(), p.getRight());
-                System.out.print(getPlayer().getCreaturesInPlay().get(p.getLeft()).getName() + " -> " + combat.getDefenders().get(p.getRight()).getName() + ", ");
-            }
-            System.out.println();
+            //declareAttackersCounter = orginalCounter+1;
+            declareAttackersCache.set(orginalCounter, maxAction);
+            //reset game state
+            getGame().setAge(GameStage.RestartedByKarn);
             p1.declareAttackersCounter = 0;
             p2.declareAttackersCounter = 0;
-            getGame().getPhaseHandler().endSim = true;
-            //MyRandom.setRandom(localRandom);
+            MyRandom.setRandom(new Random(randomSeed));
 
         }
-
     }
     @Override
     public void declareBlockers(Player defender, Combat combat) {
-        //System.out.println("TRYING TO DECLARE BLOCKERS???");
         brains.declareBlockersFor(defender, combat);
     }
 

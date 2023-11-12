@@ -1227,7 +1227,9 @@ public class GameAction {
         game.getTracker().freeze(); //prevent views flickering during while updating for state-based effects
 
         // check the game over condition early for win conditions such as Platinum Angel + Hurricane lethal for both players
+        //System.out.println(game.isGameOver());
         checkGameOverCondition();
+        //System.out.println(game.isGameOver());
 
         // do this multiple times, sometimes creatures/permanents will survive when they shouldn't
         boolean performedSBA = false;
@@ -2001,7 +2003,7 @@ public class GameAction {
 
         //shuffle
         List<Card> shuffledCards = Lists.newArrayList(p1.getZone(ZoneType.Library).getCards().threadSafeIterable());
-        Collections.shuffle(shuffledCards);
+        Collections.shuffle(shuffledCards, MyRandom.getRandom());
 
         //check a second hand
         List<Card> hand2 = shuffledCards.subList(0,p1.getMaxHandSize());
@@ -2043,11 +2045,12 @@ public class GameAction {
     }
     public void startGame(GameOutcome lastGameOutcome, Runnable startGameHook) {
         Player first = determineFirstTurnPlayer(lastGameOutcome);
+        first = game.getPlayers().get(0);
 
         GameType gameType = game.getRules().getGameType();
         do {
+            System.out.println("HELOOOOOO????");
             if (game.isGameOver()) { break; } // conceded during "play or draw"
-
             // FControl should determine now if there are any human players.
             // Where there are none, it should bring up speed controls
             game.fireEvent(new GameEventGameStarted(gameType, first, game.getPlayers()));
@@ -2077,9 +2080,13 @@ public class GameAction {
             if (game.getRules().hasAppliedVariant(GameType.Planechase)) {
                 first.initPlane();
             }
+            //if (game.isGameOver()) { break; }
 
             first = runOpeningHandActions(first);
-            checkStateEffects(true); // why?
+            if (game.isGameOver()) { break; }
+            //checkStateEffects(true); // why?
+
+            //if (game.isGameOver()) { break; }
 
             // Run Trigger beginning of the game
             game.getTriggerHandler().runTrigger(TriggerType.NewGame, AbilityKey.newMap(), true);

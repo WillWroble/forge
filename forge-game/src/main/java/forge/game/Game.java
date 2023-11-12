@@ -31,10 +31,7 @@ import forge.game.combat.Combat;
 import forge.game.event.Event;
 import forge.game.event.GameEventDayTimeChanged;
 import forge.game.event.GameEventGameOutcome;
-import forge.game.phase.Phase;
-import forge.game.phase.PhaseHandler;
-import forge.game.phase.PhaseType;
-import forge.game.phase.Untap;
+import forge.game.phase.*;
 import forge.game.player.*;
 import forge.game.replacement.ReplacementHandler;
 import forge.game.spellability.SpellAbility;
@@ -50,6 +47,7 @@ import forge.util.Aggregates;
 import forge.util.MyRandom;
 import forge.util.Visitor;
 import forge.util.collect.FCollection;
+import forge.util.collect.FCollectionView;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.*;
@@ -81,6 +79,7 @@ public class Game {
     public final MagicStack stack;
     public final CostPaymentStack costPaymentStack = new CostPaymentStack();
     private final PhaseHandler phaseHandler;
+    private final StateActionMachine stateActionMachine;
     private final StaticEffects staticEffects = new StaticEffects();
     private final TriggerHandler triggerHandler = new TriggerHandler(this);
     private final ReplacementHandler replacementHandler = new ReplacementHandler(this);
@@ -111,6 +110,8 @@ public class Game {
     private Direction turnOrder = Direction.getDefaultDirection();
 
     private Boolean daytime = null;
+
+    public int gameScore = -1;
 
     private long timestamp = 0;
     public final GameAction action;
@@ -292,6 +293,7 @@ public class Game {
         action = new GameAction(this);
         stack = new MagicStack(this);
         phaseHandler = new PhaseHandler(this);
+        stateActionMachine = new StateActionMachine(this);
 
         untap = new Untap(this);
         upkeep = new Phase(PhaseType.UPKEEP);
@@ -388,6 +390,7 @@ public class Game {
     public final PhaseHandler getPhaseHandler() {
         return phaseHandler;
     }
+    public final StateActionMachine getStateActionMachine() { return stateActionMachine; }
     public final void updateTurnForView() {
         view.updateTurn(phaseHandler);
     }
@@ -1256,4 +1259,98 @@ public class Game {
         if (!isNeitherDayNorNight())
             fireEvent(new GameEventDayTimeChanged(isDay()));
     }
+    /*
+    public void RESTART_GAME() {
+        //final Player activator = sa.getActivatingPlayer();
+        //final Game game = activator.getGame();
+        FCollectionView<Player> players = getPlayers();
+
+        // Don't grab Ante Zones
+        List<ZoneType> restartZones = new ArrayList<>(Arrays.asList(ZoneType.Battlefield,
+                ZoneType.Library, ZoneType.Graveyard, ZoneType.Hand, ZoneType.Exile));
+
+        //ZoneType leaveZone = ZoneType.smartValueOf(sa.hasParam("RestrictFromZone") ? sa.getParam("RestrictFromZone") : null);
+        //restartZones.remove(leaveZone);
+        //String leaveRestriction = sa.getParamOrDefault("RestrictFromValid", "Card");
+
+        //Card.resetUniqueNumber();
+        // need this code here, otherwise observables fail
+        forge.game.trigger.Trigger.resetIDs();
+        TriggerHandler trigHandler = getTriggerHandler();
+        trigHandler.clearDelayedTrigger();
+        trigHandler.clearPlayerDefinedDelayedTrigger();
+        trigHandler.suppressMode(TriggerType.ChangesZone);
+        // Avoid Psychic Surgery trigger in new game
+        trigHandler.suppressMode(TriggerType.Shuffled);
+
+        getPhaseHandler().restart();
+        getPhaseHandler().setPlayerDeclaresAttackers(null);
+        getPhaseHandler().setPlayerDeclaresBlockers(null);
+        getUntap().clearCommands();
+        getUpkeep().clearCommands();
+        getEndOfCombat().clearCommands();
+        getEndOfTurn().clearCommands();
+        getCleanup().clearCommands();
+
+        getStack().reset();
+        clearCounterAddedThisTurn();
+        clearCounterRemovedThisTurn();
+        setMonarch(null);
+        setHasInitiative(null);
+        setDayTime(null);
+        GameAction action = getAction();
+
+        for (Player p: players) {
+            p.setStartingLife(p.getStartingLife());
+            p.clearCounters();
+            p.resetSpellCastThisGame();
+            p.onCleanupPhase();
+            p.setLandsPlayedLastTurn(0);
+            p.setSpellsCastLastTurn(0);
+            p.setLifeLostLastTurn(0);
+            p.resetCommanderStats();
+            p.resetCompletedDungeons();
+            p.resetRingTemptedYou();
+            p.clearRingBearer();
+            p.clearTheRing();
+            p.setBlessing(false);
+            p.clearController();
+
+            CardCollection newLibrary = new CardCollection(p.getCardsIn(restartZones, false));
+            List<Card> filteredCards = null;
+            if (leaveZone != null) {
+                filteredCards = CardLists.getValidCards(p.getCardsIn(leaveZone), leaveRestriction, p, sa.getHostCard(), sa);
+                newLibrary.addAll(filteredCards);
+            }
+
+            // special handling for Karn to filter out non-cards
+            for (Card c : p.getCardsIn(ZoneType.Command)) {
+                if (c.isCommander()) {
+                    newLibrary.add(c);
+                }
+            }
+            p.getZone(ZoneType.Command).removeAllCards(true);
+
+            for (Card c : newLibrary) {
+                if (c.getIntensity(false) > 0) {
+                    c.setIntensity(0);
+                }
+                action.moveToLibrary(c, 0, sa);
+            }
+            p.initVariantsZones(p.getRegisteredPlayer());
+
+            p.shuffle(null);
+        }
+
+        trigHandler.clearSuppression(TriggerType.Shuffled);
+        trigHandler.clearSuppression(TriggerType.ChangesZone);
+
+        game.resetTurnOrder();
+        game.setAge(GameStage.RestartedByKarn);
+        // For the rare case that you get to resolve it during another players turn
+        game.getPhaseHandler().setPlayerTurn(activator);
+
+        // The rest is handled by phaseHandler
+    }
+     */
 }

@@ -34,6 +34,8 @@ public final class Main {
      */
     public static void main(final String[] args) {
 
+        System.out.println("Hello Forge!!");
+
         Sentry.init(options -> {
             options.setEnableExternalConfiguration(true);
             options.setRelease(BuildInfo.getVersionString());

@@ -19,6 +19,7 @@ package forge.util;
 
 import java.security.SecureRandom;
 import java.util.Random;
+import java.io.*;
 
 /**
  * <p>
@@ -71,5 +72,14 @@ public class MyRandom {
         }
 
         return groups;
+    }
+    public static Random cloneRandom(Random src) throws Exception {
+        ByteArrayOutputStream bo = new ByteArrayOutputStream();
+        ObjectOutputStream oos = new ObjectOutputStream(bo);
+        oos.writeObject(src);
+        oos.close();
+        ObjectInputStream ois = new ObjectInputStream(
+                new ByteArrayInputStream(bo.toByteArray()));
+        return (Random)(ois.readObject());
     }
 }

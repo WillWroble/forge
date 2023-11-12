@@ -23,6 +23,7 @@ import forge.item.PaperCard;
 import forge.util.Localizer;
 import forge.util.MyRandom;
 import forge.util.collect.FCollectionView;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.*;
 import java.util.Map.Entry;
@@ -33,6 +34,10 @@ public class Match {
     private final GameRules rules;
     private final String title;
 
+    private long randomSeed;
+    private int gameCycles = 0;
+    public Game finalGame;
+
     private final EventBus events = new EventBus("match events");
     private final Map<Integer, GameOutcome> gameOutcomes = Maps.newHashMap();
 
@@ -42,6 +47,12 @@ public class Match {
         players = Collections.unmodifiableList(Lists.newArrayList(players0));
         rules = rules0;
         this.title = title;
+        Random origRandom = MyRandom.getRandom();
+        randomSeed = origRandom.nextLong();
+        //randomSeed = -1763767366310842187L;
+        //randomSeed = 1281283883698423219L;
+        System.out.println("SEED: " +  randomSeed);
+        //MyRandom.setRandom(new Random(randomSeed));
     }
 
     public GameRules getRules() {
@@ -68,11 +79,31 @@ public class Match {
     }
 
     public Game createGame() {
+        MyRandom.setRandom(new Random(randomSeed));
         return new Game(players, rules, this);
     }
 
     public void startGame(final Game game) {
         startGame(game, null);
+
+        gameCycles++;
+        if(gameCycles > 4) {
+            finalGame = game;
+            return;
+        }
+
+        Game newGame = createGame();
+        PlayerController p1 = newGame.getPlayers().get(0).getController();
+        PlayerController p2 = newGame.getPlayers().get(1).getController();
+
+        PlayerController oldp1 = game.getPlayers().get(0).getController();
+        PlayerController oldp2 = game.getPlayers().get(1).getController();
+
+        p1.setCaches(oldp1.getCaches());
+        p2.setCaches(oldp2.getCaches());
+        System.out.println("RESTARTING BASE GAME");
+
+        startGame(newGame);
     }
 
     public void startGame(final Game game, Runnable startGameHook) {
