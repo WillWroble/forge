@@ -21,6 +21,7 @@ import forge.game.mana.Mana;
 import forge.game.mana.ManaConversionMatrix;
 import forge.game.mana.ManaCostBeingPaid;
 import forge.game.phase.PhaseHandler;
+import forge.game.phase.PhaseType;
 import forge.game.player.Player;
 import forge.game.player.PlayerCollection;
 import forge.game.player.PlayerPredicates;
@@ -2112,6 +2113,11 @@ public class AbilityUtils {
             return doXMath(Integer.parseInt(sq[isMyMain ? 1 : 2]), expr, c, ctb);
         }
 
+        // Count$FinishedUpkeepsThisTurn
+        if (sq[0].startsWith("FinishedUpkeepsThisTurn")) {
+            return doXMath(game.getPhaseHandler().getNumUpkeep() - (game.getPhaseHandler().is(PhaseType.UPKEEP) ? 1 : 0), expr, c, ctb);
+        }
+
         // Count$AttachedTo <restriction>
         if (sq[0].startsWith("AttachedTo")) {
             final String[] k = l[0].split(" ");
@@ -2397,6 +2403,20 @@ public class AbilityUtils {
             final String[] workingCopy = l[0].split(" ", 2);
             final String validFilter = workingCopy[1];
             return doXMath(CardLists.getValidCardCount(player.getCreaturesAttackedThisTurn(), validFilter, player, c, ctb), expr, c, ctb);
+        }
+
+        // Count$LeftBattlefieldThisTurn <Valid>
+        if (sq[0].startsWith("LeftBattlefieldThisTurn")) {
+            final String[] workingCopy = l[0].split(" ", 2);
+            final String validFilter = workingCopy[1];
+            return doXMath(CardLists.getValidCardCount(game.getLeftBattlefieldThisTurn(), validFilter, player, c, ctb), expr, c, ctb);
+        }
+
+        // Count$LeftBattlefieldThisTurn <Valid>
+        if (sq[0].startsWith("LeftGraveyardThisTurn")) {
+            final String[] workingCopy = l[0].split(" ", 2);
+            final String validFilter = workingCopy[1];
+            return doXMath(CardLists.getValidCardCount(game.getLeftGraveyardThisTurn(), validFilter, player, c, ctb), expr, c, ctb);
         }
 
         // Manapool

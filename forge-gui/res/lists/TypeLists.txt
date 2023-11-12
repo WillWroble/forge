@@ -52,6 +52,7 @@ Brushwagg:Brushwaggs
 Camarid:Camarids
 C'tan:C'tan
 Camel:Camels
+Capybara:Capybaras
 Caribou:Caribous
 Carrier:Carriers
 Cat:Cats
@@ -422,6 +423,7 @@ Undercity
 [BattleTypes]
 Siege
 [PlanarTypes]
+Androzani Minor
 Alara
 Alfava Metraxis
 Amonkhet
