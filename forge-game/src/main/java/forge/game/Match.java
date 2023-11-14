@@ -48,9 +48,10 @@ public class Match {
         rules = rules0;
         this.title = title;
         Random origRandom = MyRandom.getRandom();
-        randomSeed = origRandom.nextLong();
+        //randomSeed = origRandom.nextLong();
         //randomSeed = -1763767366310842187L;
         //randomSeed = 1281283883698423219L;
+        randomSeed = 4158043966001857898L;
         System.out.println("SEED: " +  randomSeed);
         //MyRandom.setRandom(new Random(randomSeed));
     }

@@ -39,7 +39,7 @@ public class CharmAi extends SpellAbilityAi {
 
         // only randomize if not all possible together
         if (num < choices.size() || source.hasKeyword(Keyword.ESCALATE)) {
-            Collections.shuffle(choices);
+            //Collections.shuffle(choices);
         }
 
         boolean timingRight = sa.isTrigger(); //is there a reason to play the charm now?

@@ -67,16 +67,18 @@ public class PlayerControllerAi extends PlayerController {
     private boolean pilotsNonAggroDeck = false;
     private static int simsLeft = 3;
     private int parentPlayer;
-    private GameStateEvaluator eval = new GameStateEvaluator();
+    private GameStateEvaluator eval;
     private int declareAttackersCounter = 0;
 
-    private ArrayList<ArrayList<Pair<Integer, Integer>>> declareAttackersCache = new ArrayList<>();
+    private ArrayList<ArrayList<Pair<Integer, Integer>>> declareAttackersCache;
     GameObjectMap gom;
 
     public PlayerControllerAi(Game game, Player p, LobbyPlayer lp) {
         super(game, p, lp);
 
         brains = new AiController(p, game);
+        declareAttackersCache = new ArrayList<>();
+        eval = new GameStateEvaluator();
     }
 
     public boolean pilotsNonAggroDeck() {
@@ -786,14 +788,10 @@ public class PlayerControllerAi extends PlayerController {
             getGame().getPhaseHandler().endSim = true;
             return;
         }
-        Random localRandom = null;
+
         int localSimCount = simsLeft;
-        try {
-            localRandom = MyRandom.cloneRandom(MyRandom.getRandom());
-        } catch(Exception e) {
-            //do nothing
-            System.out.println("I want to die");
-        }
+        Random localRandom = MyRandom.getRandom();
+
         int maxScore = -9999;
         int minScore = 9999;
 
@@ -851,6 +849,7 @@ public class PlayerControllerAi extends PlayerController {
             }
         }
         simsLeft = localSimCount;
+        //MyRandom.setRandom(localRandom);
 
 
         if(simsLeft < 3) {
@@ -869,10 +868,11 @@ public class PlayerControllerAi extends PlayerController {
             System.out.print("RETURNING TO BASE GAME WITH BEST ACTION: ");
             declareAttackersCache.set(declareAttackersCounter, maxAction);
             for (Pair<Integer, Integer> p : maxAction) {
-                //combat.addAttacker(p.getLeft(), p.getRight());
+                //combat.addAttacker(getPlayer().getCreaturesInPlay().get(p.getLeft()), combat.getDefenders().get(p.getRight()));
                 System.out.print(getPlayer().getCreaturesInPlay().get(p.getLeft()).getName() + " -> " + combat.getDefenders().get(p.getRight()).getName() + ", ");
             }
             System.out.println();
+            //declareAttackersCounter++;
             p1.declareAttackersCounter = 0;
             p2.declareAttackersCounter = 0;
             getGame().getPhaseHandler().endSim = true;
@@ -889,6 +889,13 @@ public class PlayerControllerAi extends PlayerController {
 
     @Override
     public List<SpellAbility> chooseSpellAbilityToPlay() {
+        //return brains.chooseSpellAbilityToPlay();
+        if(getGame().getPhaseHandler().getPhase() != PhaseType.MAIN1 && getGame().getPhaseHandler().getPhase() != PhaseType.MAIN2) {
+            return brains.chooseSpellAbilityToPlay();
+        }
+        CardCollection cards = ComputerUtilAbility.getAvailableCards(getGame(), player);
+        List<SpellAbility> saList = Lists.newArrayList();
+        saList = ComputerUtilAbility.getSpellAbilities(cards, player);
         return brains.chooseSpellAbilityToPlay();
     }
 

@@ -564,6 +564,7 @@ public class PhaseHandler implements java.io.Serializable {
                 success = CombatUtil.validateAttackers(combat);
                 if (!success) {
                     whoDeclares.getController().notifyOfValue(null, null, "Attack declaration invalid");
+                    System.out.println("INVALID ATTACKS");
                     continue;
                 }
 
