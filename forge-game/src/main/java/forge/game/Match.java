@@ -35,7 +35,7 @@ public class Match {
     private final String title;
 
     private long randomSeed;
-    public int maxTurns = 3;
+    public int maxTurns = 5;
     public Game finalGame;
 
     private final EventBus events = new EventBus("match events");

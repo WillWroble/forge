@@ -703,7 +703,7 @@ public class PlayerControllerAi extends PlayerController {
             brains.declareAttackers(attacker, combat);
             return;
         }
-        getGame().getPhaseHandler().decisionsMade++;
+
         System.out.println("TURN: " + attacker.getTurn());
 
         if(getGame().getPhaseHandler().endSim) {
@@ -894,6 +894,7 @@ public class PlayerControllerAi extends PlayerController {
             //p2.declareAttackersCounter = 0;
             //getGame().getPhaseHandler().endSim = true;
             MyRandom.setRandom(localRandom);
+            getGame().getPhaseHandler().decisionsMade++;
 
         }
 
@@ -910,19 +911,16 @@ public class PlayerControllerAi extends PlayerController {
     @Override
     public List<SpellAbility> chooseSpellAbilityToPlay() {
         //return brains.chooseSpellAbilityToPlay();
-        if(true) {
+        if(false) {
             return brains.chooseSpellAbilityToPlay();
         }
-
-        getGame().getPhaseHandler().decisionsMade++;
-
         if(ComputerUtilAbility.getAvailableLandsToPlay(getGame(), getPlayer()) != null) {
             return brains.chooseSpellAbilityToPlay();
         }
         if(!getPlayer().canCastSorcery()) {
             return brains.chooseSpellAbilityToPlay();
         }
-        System.out.println("TURN: " + getPlayer().getTurn());
+
         CardCollection cards = ComputerUtilAbility.getAvailableCards(getGame(), player);
         List<SpellAbility> saList = Lists.newArrayList();
         saList = ComputerUtilAbility.getSpellAbilities(cards, player);
@@ -930,25 +928,14 @@ public class PlayerControllerAi extends PlayerController {
 
         //List<List<Integer>> allPossibleSpellAbilites = new ArrayList<>();
         //List<Integer> empty = new ArrayList<>();
-        System.out.println("POSSIBLE SAS: ");
-        for (SpellAbility sa : saList) {
-            System.out.print(sa.getDescription() + ", ");
-        }
-        System.out.println();
-        System.out.println("CARDS: ");
-        for (Card c : getPlayer().getCardsIn(ZoneType.Hand)) {
-            System.out.print(c.getName() + ", ");
-        }
-        System.out.println();
-
         List<SpellAbility> finalSAs = new ArrayList<>();
         for (SpellAbility sa : saList) {
             if (!sa.canPlay()) {
-                System.out.println("CANT PLAY");
+                //System.out.println("CANT PLAY");
                 continue;
             }
             if (!ComputerUtilCost.canPayCost(sa, getPlayer(), false)) {
-                System.out.println("CANT PAY");
+                //System.out.println("CANT PAY");
                 continue;
             }
             if (sa.isManaAbility()) {
@@ -965,9 +952,22 @@ public class PlayerControllerAi extends PlayerController {
         }
         saList = finalSAs;
         if(saList.isEmpty()) {
-            System.out.println("NO SAS TO PLAY");
+            //System.out.println("NO SAS TO PLAY");
             return null;
         }
+        System.out.println("TURN: " + getPlayer().getTurn());
+
+        System.out.print("POSSIBLE SAS: ");
+        for (SpellAbility sa : saList) {
+            System.out.print(sa.getDescription() + ", ");
+        }
+        System.out.println();
+        System.out.print("CARDS: ");
+        for (Card c : getPlayer().getCardsIn(ZoneType.Hand)) {
+            System.out.print(c.getName() + ", ");
+        }
+        System.out.println();
+
         if (chooseSpellAbilityCounter < chooseSpellAbilityCache.size()) {
             //decision in cache
             int k = chooseSpellAbilityCache.get(chooseSpellAbilityCounter);
@@ -1077,6 +1077,7 @@ public class PlayerControllerAi extends PlayerController {
             chooseSpellAbilityCache.set(chooseSpellAbilityCounter, maxAction);
             chooseSpellAbilityCounter++;
             MyRandom.setRandom(localRandom);
+            getGame().getPhaseHandler().decisionsMade++;
             return out;
 
         }
