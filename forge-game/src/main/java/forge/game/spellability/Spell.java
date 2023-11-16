@@ -62,6 +62,7 @@ public abstract class Spell extends SpellAbility implements java.io.Serializable
     /** {@inheritDoc} */
     @Override
     public boolean canPlay() {
+        //System.out.println("WTF IS GOING ONN");
         Card card = this.getHostCard();
         if (card.isInPlay()) {
             return false;

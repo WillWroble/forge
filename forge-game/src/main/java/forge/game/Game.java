@@ -113,6 +113,7 @@ public class Game {
     private Direction turnOrder = Direction.getDefaultDirection();
 
     private Boolean daytime = null;
+    public Boolean isBaseGame = false;
 
     public int gameScore = -1;
 

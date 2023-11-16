@@ -1351,7 +1351,7 @@ public class AiController {
         // Reset priority mana reservation that's meant to work for one spell only
         memory.clearMemorySet(AiCardMemory.MemorySet.HELD_MANA_SOURCES_FOR_NEXT_SPELL);
 
-        if (useSimulation) {
+        if (useSimulation && false) {
             return singleSpellAbilityList(simPicker.chooseSpellAbilityToPlay(null));
         }
 

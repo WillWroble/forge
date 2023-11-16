@@ -35,7 +35,7 @@ public class Match {
     private final String title;
 
     private long randomSeed;
-    private int gameCycles = 0;
+    public int maxTurns = 3;
     public Game finalGame;
 
     private final EventBus events = new EventBus("match events");
@@ -85,9 +85,12 @@ public class Match {
     }
 
     public void startGame(final Game game) {
+        game.isBaseGame = true;
         startGame(game, null);
+        finalGame = game;
+        return;
 
-        gameCycles++;
+        /*gameCycles++;
         if(gameCycles > 4) {
             finalGame = game;
             return;
@@ -100,11 +103,11 @@ public class Match {
         PlayerController oldp1 = game.getPlayers().get(0).getController();
         PlayerController oldp2 = game.getPlayers().get(1).getController();
 
-        p1.setCaches(oldp1.getCaches());
-        p2.setCaches(oldp2.getCaches());
+        p1.setCaches(oldp1);
+        p2.setCaches(oldp2);
         System.out.println("RESTARTING BASE GAME");
 
-        startGame(newGame);
+        startGame(newGame);*/
     }
 
     public void startGame(final Game game, Runnable startGameHook) {

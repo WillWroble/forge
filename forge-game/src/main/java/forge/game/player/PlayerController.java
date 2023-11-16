@@ -131,7 +131,7 @@ public abstract class PlayerController {
 
     public abstract SpellAbility chooseSingleSpellForEffect(List<SpellAbility> spells, SpellAbility sa, String title, Map<String, Object> params);
 
-    public void setCaches(ArrayList<ArrayList<Pair<Integer, Integer>>> a) {
+    public void setCaches(PlayerController a) {
 
     }
     public ArrayList<ArrayList<Pair<Integer, Integer>>> getCaches() {

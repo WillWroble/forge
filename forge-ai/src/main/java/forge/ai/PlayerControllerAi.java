@@ -9,6 +9,7 @@ import com.google.common.collect.Multimap;
 import forge.LobbyPlayer;
 import forge.ai.ability.ProtectAi;
 import forge.ai.simulation.GameStateEvaluator;
+import forge.ai.simulation.PossibleTargetSelector;
 import forge.card.CardStateName;
 import forge.card.ColorSet;
 import forge.card.ICardFace;
@@ -69,16 +70,24 @@ public class PlayerControllerAi extends PlayerController {
     private int parentPlayer;
     private GameStateEvaluator eval;
     private int declareAttackersCounter = 0;
+    private int chooseSpellAbilityCounter = 0;
+
 
     private ArrayList<ArrayList<Pair<Integer, Integer>>> declareAttackersCache;
-    GameObjectMap gom;
+    private ArrayList<Integer> chooseSpellAbilityCache;
+
+    PlayerControllerAi p1;// = (PlayerControllerAi)(getGame().getPlayers().get(0).getController());
+    PlayerControllerAi p2;// = (PlayerControllerAi)(getGame().getPlayers().get(1).getController());
+
 
     public PlayerControllerAi(Game game, Player p, LobbyPlayer lp) {
         super(game, p, lp);
 
         brains = new AiController(p, game);
         declareAttackersCache = new ArrayList<>();
+        chooseSpellAbilityCache = new ArrayList<>();
         eval = new GameStateEvaluator();
+
     }
 
     public boolean pilotsNonAggroDeck() {
@@ -96,8 +105,12 @@ public class PlayerControllerAi extends PlayerController {
     public void setUseSimulation(boolean value) {
         brains.setUseSimulation(value);
     }
-    public void setCaches(ArrayList<ArrayList<Pair<Integer, Integer>>> a) {
-        declareAttackersCache = a;
+    public void setCaches(PlayerController a) {
+        PlayerControllerAi pcai = (PlayerControllerAi) a;
+        declareAttackersCache = new ArrayList<>(pcai.declareAttackersCache);
+        chooseSpellAbilityCache = new ArrayList<>(pcai.chooseSpellAbilityCache);
+        p1 = (PlayerControllerAi) (getGame().getPlayers().get(0).getController());
+        p2 = (PlayerControllerAi) (getGame().getPlayers().get(1).getController());
     }
     public ArrayList<ArrayList<Pair<Integer, Integer>>> getCaches() {
         return declareAttackersCache;
@@ -685,6 +698,12 @@ public class PlayerControllerAi extends PlayerController {
     }
     @Override
     public void declareAttackers(Player attacker, Combat combat) {
+
+        if(false) {
+            brains.declareAttackers(attacker, combat);
+            return;
+        }
+        getGame().getPhaseHandler().decisionsMade++;
         System.out.println("TURN: " + attacker.getTurn());
 
         if(getGame().getPhaseHandler().endSim) {
@@ -694,11 +713,10 @@ public class PlayerControllerAi extends PlayerController {
             return;
         }
 
-        PlayerControllerAi p1 = (PlayerControllerAi)(getGame().getPlayers().get(0).getController());
-        PlayerControllerAi p2 = (PlayerControllerAi)(getGame().getPlayers().get(1).getController());
-
         List<List<Pair<Integer, Integer>>> possibleAttackCombinations = new ArrayList<>(9999);
         List<Pair<Integer, Integer>> empty = new ArrayList<>();
+        p1 = (PlayerControllerAi)(getGame().getPlayers().get(0).getController());
+        p2 = (PlayerControllerAi)(getGame().getPlayers().get(1).getController());
 
         //fill list of lists
         FCollectionView<GameEntity> allDefenders = combat.getDefenders();
@@ -816,10 +834,9 @@ public class PlayerControllerAi extends PlayerController {
 
             PlayerControllerAi newP1 = (PlayerControllerAi) simGame.getPlayers().get(0).getController();
             PlayerControllerAi newP2 = (PlayerControllerAi) simGame.getPlayers().get(1).getController();
-            newP1.declareAttackersCache = new ArrayList<>(p1.declareAttackersCache);
-            newP1.declareAttackersCounter = 0;
-            newP2.declareAttackersCache = new ArrayList<>(p2.declareAttackersCache);
-            newP2.declareAttackersCounter = 0;
+            newP1.setCaches(p1);
+            newP2.setCaches(p2);
+
             if(localSimCount == 3) {
                 //is not within sim
                 if (this == p1) {
@@ -868,15 +885,15 @@ public class PlayerControllerAi extends PlayerController {
             System.out.print("RETURNING TO BASE GAME WITH BEST ACTION: ");
             declareAttackersCache.set(declareAttackersCounter, maxAction);
             for (Pair<Integer, Integer> p : maxAction) {
-                //combat.addAttacker(getPlayer().getCreaturesInPlay().get(p.getLeft()), combat.getDefenders().get(p.getRight()));
+                combat.addAttacker(getPlayer().getCreaturesInPlay().get(p.getLeft()), combat.getDefenders().get(p.getRight()));
                 System.out.print(getPlayer().getCreaturesInPlay().get(p.getLeft()).getName() + " -> " + combat.getDefenders().get(p.getRight()).getName() + ", ");
             }
             System.out.println();
-            //declareAttackersCounter++;
-            p1.declareAttackersCounter = 0;
-            p2.declareAttackersCounter = 0;
-            getGame().getPhaseHandler().endSim = true;
-            //MyRandom.setRandom(localRandom);
+            declareAttackersCounter++;
+            //p1.declareAttackersCounter = 0;
+            //p2.declareAttackersCounter = 0;
+            //getGame().getPhaseHandler().endSim = true;
+            MyRandom.setRandom(localRandom);
 
         }
 
@@ -886,17 +903,185 @@ public class PlayerControllerAi extends PlayerController {
         //System.out.println("TRYING TO DECLARE BLOCKERS???");
         brains.declareBlockersFor(defender, combat);
     }
+    /*private void trySA(List<Integer> a, List<List<Integer>> all, int index, List<SpellAbility> SAs) {
+        List<Integer> b = new ArrayList<>(a);
 
+    }*/
     @Override
     public List<SpellAbility> chooseSpellAbilityToPlay() {
         //return brains.chooseSpellAbilityToPlay();
-        if(getGame().getPhaseHandler().getPhase() != PhaseType.MAIN1 && getGame().getPhaseHandler().getPhase() != PhaseType.MAIN2) {
+        if(true) {
             return brains.chooseSpellAbilityToPlay();
         }
+
+        getGame().getPhaseHandler().decisionsMade++;
+
+        if(ComputerUtilAbility.getAvailableLandsToPlay(getGame(), getPlayer()) != null) {
+            return brains.chooseSpellAbilityToPlay();
+        }
+        if(!getPlayer().canCastSorcery()) {
+            return brains.chooseSpellAbilityToPlay();
+        }
+        System.out.println("TURN: " + getPlayer().getTurn());
         CardCollection cards = ComputerUtilAbility.getAvailableCards(getGame(), player);
         List<SpellAbility> saList = Lists.newArrayList();
         saList = ComputerUtilAbility.getSpellAbilities(cards, player);
-        return brains.chooseSpellAbilityToPlay();
+        saList = ComputerUtilAbility.getOriginalAndAltCostAbilities(saList, getPlayer());
+
+        //List<List<Integer>> allPossibleSpellAbilites = new ArrayList<>();
+        //List<Integer> empty = new ArrayList<>();
+        System.out.println("POSSIBLE SAS: ");
+        for (SpellAbility sa : saList) {
+            System.out.print(sa.getDescription() + ", ");
+        }
+        System.out.println();
+        System.out.println("CARDS: ");
+        for (Card c : getPlayer().getCardsIn(ZoneType.Hand)) {
+            System.out.print(c.getName() + ", ");
+        }
+        System.out.println();
+
+        List<SpellAbility> finalSAs = new ArrayList<>();
+        for (SpellAbility sa : saList) {
+            if (!sa.canPlay()) {
+                System.out.println("CANT PLAY");
+                continue;
+            }
+            if (!ComputerUtilCost.canPayCost(sa, getPlayer(), false)) {
+                System.out.println("CANT PAY");
+                continue;
+            }
+            if (sa.isManaAbility()) {
+                continue;
+            }
+            if (sa.usesTargeting()) {
+                //continue;
+                TargetRestrictions tgt = sa.getTargetRestrictions();
+                if(tgt.getAllCandidates(sa, true).isEmpty()) {
+                    continue;
+                }
+            }
+            finalSAs.add(sa);
+        }
+        saList = finalSAs;
+        if(saList.isEmpty()) {
+            System.out.println("NO SAS TO PLAY");
+            return null;
+        }
+        if (chooseSpellAbilityCounter < chooseSpellAbilityCache.size()) {
+            //decision in cache
+            int k = chooseSpellAbilityCache.get(chooseSpellAbilityCounter);
+            SpellAbility chosenSA;
+            if (k > -1) {
+                chosenSA = saList.get(k);
+                System.out.println("SA DECISION IN CACHE: " + chosenSA.getDescription());
+                List<SpellAbility> out = new ArrayList<>();
+                out.add(chosenSA);
+                chooseSpellAbilityCounter++;
+                return out;
+            } else {
+                chosenSA = null;
+                System.out.println("SA DECISION IN CACHE: [PASS]");
+                chooseSpellAbilityCounter++;
+                return null;
+            }
+
+        }
+        if (simsLeft < 1) {
+            //is a leaf sim
+            //just return current score
+            getGame().gameScore = eval.getScoreForGameState(getGame(), getGame().getPlayers().get(parentPlayer)).value;
+            System.out.println("RAN OUT OF SIMS - RETURNING STATE SCORE: " + getGame().gameScore);
+            getGame().getPhaseHandler().endSim = true;
+            return null;
+        }
+        p1 = (PlayerControllerAi) (getGame().getPlayers().get(0).getController());
+        p2 = (PlayerControllerAi) (getGame().getPlayers().get(1).getController());
+        int maxScore = -9999;
+        int minScore = 9999;
+        int maxAction = -1;
+        int localSimCount = simsLeft;
+        Random localRandom = MyRandom.getRandom();
+        chooseSpellAbilityCache.add(-1);
+
+
+
+        for (int i = -1; i < saList.size(); i++) {
+
+            chooseSpellAbilityCache.set(chooseSpellAbilityCounter, i);
+
+            System.out.println("RESTARTING GAME");
+            simsLeft = localSimCount / (saList.size()+1);
+
+
+            Game simGame = getMatch().createGame();
+
+            PlayerControllerAi newP1 = (PlayerControllerAi) simGame.getPlayers().get(0).getController();
+            PlayerControllerAi newP2 = (PlayerControllerAi) simGame.getPlayers().get(1).getController();
+            newP1.setCaches(p1);
+            newP2.setCaches(p2);
+
+            if (localSimCount == 3) {
+                //is not within sim
+                if (this == p1) {
+                    newP1.parentPlayer = 0;
+                    newP2.parentPlayer = 0;
+                } else {
+                    newP1.parentPlayer = 1;
+                    newP2.parentPlayer = 1;
+                }
+            } else {
+                newP1.parentPlayer = parentPlayer;
+                newP2.parentPlayer = parentPlayer;
+            }
+            getMatch().startGame(simGame, null);
+
+
+            System.out.println("SIM GAME FINISHED");
+            //collect score from sim
+            int collectedScore = simGame.gameScore;
+
+            if (collectedScore > maxScore) {
+                maxScore = collectedScore;
+                maxAction = chooseSpellAbilityCache.get(chooseSpellAbilityCounter);
+            }
+            if (collectedScore < minScore) {
+                minScore = collectedScore;
+            }
+        }
+
+        simsLeft = localSimCount;
+
+        if(simsLeft < 3) {
+            //is a sim dont finalize
+            //return score data
+            if((this == p1) == (parentPlayer == 0)) {
+                getGame().gameScore = maxScore;
+            } else {
+                getGame().gameScore = minScore;
+            }
+            System.out.println("SIM ENDING... RETURNING SCORE: " + getGame().gameScore);
+            getGame().getPhaseHandler().endSim = true;
+            return null;
+
+        } else {
+            //finalize decision
+            List<SpellAbility> out = null;
+            if(maxAction > -1) {
+                System.out.println("RETURNING TO BASE GAME WITH BEST ACTION: " + saList.get(maxAction).getDescription());
+                out = new ArrayList<>();
+                out.add(saList.get(maxAction));
+            } else {
+                System.out.println("RETURNING TO BASE GAME WITH BEST ACTION: [PASS]");
+            }
+            chooseSpellAbilityCache.set(chooseSpellAbilityCounter, maxAction);
+            chooseSpellAbilityCounter++;
+            MyRandom.setRandom(localRandom);
+            return out;
+
+        }
+
+        //return brains.chooseSpellAbilityToPlay();
     }
 
     @Override

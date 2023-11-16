@@ -20,6 +20,7 @@ package forge.game.phase;
 import java.util.*;
 
 import com.google.common.collect.*;
+import forge.game.player.PlayerController;
 import org.apache.commons.lang3.time.StopWatch;
 
 import forge.game.Game;
@@ -97,6 +98,8 @@ public class PhaseHandler implements java.io.Serializable {
     public boolean endSim = false;
     public boolean restartBaseGame = false;
 
+    public int decisionsMade = 0;
+
     private transient Player playerTurn = null;
     private transient Player playerPreviousTurn = null;
 
@@ -114,6 +117,8 @@ public class PhaseHandler implements java.io.Serializable {
     private boolean givePriorityToPlayer = false;
 
     private final transient Game game;
+
+
 
     public PhaseHandler(final Game game0) {
         game = game0;
@@ -1136,6 +1141,7 @@ public class PhaseHandler implements java.io.Serializable {
                 }
             } else {
                 // pass the priority to other player
+                //System.out.println("PASSING PRIORITY TO OTHER PLAYER");
                 pPlayerPriority = nextPlayer;
             }
 
@@ -1160,11 +1166,12 @@ public class PhaseHandler implements java.io.Serializable {
         do {
             // Rule 704.3  Whenever a player would get priority, the game checks ... for state-based actions,
             game.getAction().checkStateEffects(false, allAffectedCards);
+            if(game.isBaseGame && decisionsMade >= game.getMatch().maxTurns) {
+                System.out.println("TERMINATING BASE GAME");
+                return true;
+            }
             if (game.isGameOver() || endSim) {
-                System.out.println("HELOOOOOO3????");
-                if(endSim) {
-                    //System.out.println("WHAT THE FUCKKKK");
-                }
+                System.out.println("ENDING GAME");
                 endSim = false;
                 return true; // state-based effects check could lead to game over
             }
